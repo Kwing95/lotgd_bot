@@ -7,6 +7,7 @@ class Bot:
 	forest_priority = ["search", "fight", "give", "wait", "play", "return", "swing",
 				"take", "no", "chicken", "ignoreferryman", "back", "nodrink",
 				"leave", "leavestonehenge"]
+	data_watch = ["Level", "Hitpoints", "Soulpoints"]
 
 	level_up_cue = '<td width="100%" bgcolor="blue">'
 	
@@ -55,6 +56,26 @@ class Bot:
 			for item in self.forest_priority:
 				if("op=" + item in link):
 					return link
+					
+	def get_chardata(self, soup):
+		chardata = dict()
+		
+		table = soup.find('table')
+		table_rows = table.find_all('tr')
+		
+		# For every row in the table
+		for tr in table_rows:
+			td = tr.find_all('td')
+			if(td[0].text == "Level"):
+				chardata["Level"] = td[1].text
+			if(td[0].text == "Hitpoints"):
+				hp = (td[1].text).split("/")
+				chardata["Health"] = int(hp[0]) / int(hp[1])
+			if(td[0].text == "Soulpoints"):
+				hp = (td[1].text).split("/")
+				chardata["Health"] = int(hp[0]) / int(hp[1])
+			
+		return chardata
 	
 	# Begin play session
 	def play(self):
@@ -65,7 +86,13 @@ class Bot:
 		while(True):
 			dump = str(response.content)
 			soup = BeautifulSoup(dump, features="html.parser")
+			table = soup.find('table')
+			table_rows = table.find_all('tr')
+			
+			chardata = self.get_chardata(soup)
+			
 			links = self.make_menu(soup)
+			break
 
 			for link in links:
 				if("forest" in link):
