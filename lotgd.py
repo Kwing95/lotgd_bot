@@ -1,24 +1,102 @@
 import requests
 from bs4 import BeautifulSoup
 
-domain = "http://www.lotgd.net/"
-session = requests.Session()
-payload = {'name' : 'usenamehere', 'password' : 'passwordhere'}
+class Bot:
 
-response = session.post(domain + "login.php", data=payload)
-cookies = session.cookies
+	village_priority = ["forest"]
+	forest_priority = ["search", "fight", "give", "wait", "play", "return", "swing",
+				"take", "no", "chicken", "ignoreferryman", "back", "nodrink",
+				"leave", "leavestonehenge"]
 
-dump = str(response.content)
-soup = BeautifulSoup(dump, features="html.parser")
-links = list()
-
-for link in soup.findAll('a'):
-	if(".php" in link.get('href')):
-		links.append(link.get('href'))
-	if("forest" in link.get('href')):
-		response = session.post(domain + link.get('href'), cookies=cookies)
-		print(response.content)
+	level_up_cue = '<td width="100%" bgcolor="blue">'
 	
+	domain = None
+	cookies = None
+	session = None
+	payload = None
+	current_link = None
+
+	# op=search type=thrill type=suicide
+
+	def __init__(self):
+		self.domain = "http://www.lotgd.net/"
+		self.session = requests.Session()
+		
+		file = open("login.txt", "r")
+		user = file.readline().strip('\n')
+		password = file.readline().strip('\n')
+
+		self.payload = {'name' : user, 'password' : password}
+		# payload = {'name' : 'PyBot', 'password' : 'PumpkinEater'}
+
+	def find_op(self, links, op_string):
+		for link in links:
+			pass
+		
+	def fight(self):
+		if get_level == 1 and get_enemy_level > 1:
+			pass
+		if get_health() > 0.5:
+			pass
+	
+	# Given a BeautifulSoup soup object, return list of links
+	def make_menu(self, soup):
+		links = list()
+		
+		for link in soup.findAll('a'):
+			if(".php" in link.get('href')):
+				links.append(link.get('href'))
+				
+		return links
+		
+	# Given a menu and a priority of commands, picks highest
+	def pick_op_priority(self, links):
+		for link in links:
+			for item in self.forest_priority:
+				if("op=" + item in link):
+					return link
+	
+	# Begin play session
+	def play(self):
+		self.current_link = self.domain + "login.php"
+		response = self.session.post(self.domain + "login.php", data=self.payload)
+		self.cookies = self.session.cookies
+
+		while(True):
+			dump = str(response.content)
+			soup = BeautifulSoup(dump, features="html.parser")
+			links = self.make_menu(soup)
+
+			for link in links:
+				if("forest" in link):
+					print("Navigating to " + self.domain + link)
+					self.current_link = self.domain + link
+					response = self.session.post(self.current_link, cookies=self.cookies)
+					
+			if("forest.php" in self.current_link):
+				link = self.pick_op_priority(links)
+				print("Navigating to " + link)
+				self.current_link = self.domain + link
+				response = self.session.post(self.current_link, cookies=self.cookies)
+		
+	def nav_and_fetch(self):
+		response = session.post(domain + "login.php", data=payload)
+		cookies = session.cookies
+
+		dump = str(response.content)
+		soup = BeautifulSoup(dump, features="html.parser")
+		links = list()
+
+		for link in soup.findAll('a'):
+			if(".php" in link.get('href')):
+				links.append(link.get('href'))
+			if("forest" in link.get('href')):
+				response = session.post(domain + link.get('href'), cookies=cookies)
+				print(response.content)
+	
+bot = Bot()
+bot.play()
+
 # print(links)
 
 # print(session.cookies)
