@@ -68,12 +68,14 @@ class Bot:
 			td = tr.find_all('td')
 			if(td[0].text == "Level"):
 				chardata["Level"] = td[1].text
-			if(td[0].text == "Hitpoints"):
+			elif(td[0].text == "Hitpoints"):
 				hp = (td[1].text).split("/")
 				chardata["Health"] = int(hp[0]) / int(hp[1])
-			if(td[0].text == "Soulpoints"):
+			elif(td[0].text == "Soulpoints"):
 				hp = (td[1].text).split("/")
 				chardata["Health"] = int(hp[0]) / int(hp[1])
+			elif(td[0].text == "Experience"):
+				chardata["Ready"] = "blue" in str(td[2])
 			
 		return chardata
 	
