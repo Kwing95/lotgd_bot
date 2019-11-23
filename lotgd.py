@@ -7,6 +7,7 @@ class Bot:
 	forest_priority = ["search", "fight", "give", "wait", "play", "return", "swing",
 				"take", "no", "chicken", "ignoreferryman", "back", "nodrink",
 				"leave", "leavestonehenge"]
+	location_priority = ["forest", "village", "news"]
 	data_watch = ["Level", "Hitpoints", "Soulpoints"]
 
 	level_up_cue = '<td width="100%" bgcolor="blue">'
@@ -57,17 +58,26 @@ class Bot:
 				if("op=" + item in link):
 					return link
 					
+	def pick_loc_priority(self, links):
+		for link in links:
+			for item in self.location_priority:
+				if(item + ".php" in link):
+					return link
+					
 	def get_chardata(self, soup):
 		chardata = dict()
 		
 		table = soup.find('table')
+		print("table = " + str(type(table)))
+		if(type(table) == None):
+			return chardata
 		table_rows = table.find_all('tr')
 		
 		# For every row in the table
 		for tr in table_rows:
 			td = tr.find_all('td')
 			if(td[0].text == "Level"):
-				chardata["Level"] = td[1].text
+				chardata["Level"] = int(td[1].text)
 			elif(td[0].text == "Hitpoints"):
 				hp = (td[1].text).split("/")
 				chardata["Health"] = int(hp[0]) / int(hp[1])
@@ -76,8 +86,16 @@ class Bot:
 				chardata["Health"] = int(hp[0]) / int(hp[1])
 			elif(td[0].text == "Experience"):
 				chardata["Ready"] = "blue" in str(td[2])
+			elif(td[0].text == "Fights"):
+				chardata["Fights"] = int(td[1].text)
 			
 		return chardata
+		
+	# Navigates to link and returns response
+	def pick_option(self, link):
+		print("Navigating to " + link)
+		self.current_link = self.domain + link
+		return self.session.post(self.current_link, cookies=self.cookies)
 	
 	# Begin play session
 	def play(self):
@@ -94,19 +112,13 @@ class Bot:
 			chardata = self.get_chardata(soup)
 			
 			links = self.make_menu(soup)
-			break
-
-			for link in links:
-				if("forest" in link):
-					print("Navigating to " + self.domain + link)
-					self.current_link = self.domain + link
-					response = self.session.post(self.current_link, cookies=self.cookies)
 					
 			if("forest.php" in self.current_link):
 				link = self.pick_op_priority(links)
-				print("Navigating to " + link)
-				self.current_link = self.domain + link
-				response = self.session.post(self.current_link, cookies=self.cookies)
+				response = self.pick_option(link)
+			else:
+				link = self.pick_loc_priority(links)
+				response = self.pick_option(link)
 		
 	def nav_and_fetch(self):
 		response = session.post(domain + "login.php", data=payload)
