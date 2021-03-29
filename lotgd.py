@@ -109,9 +109,9 @@ class Bot:
                     return link
                     
     def pick_fight(self):
-        if(charinfo['level'] == 1):
+        if(self.char_info['level'] == 1):
             self.nav_link_with("search")
-        elif(1 < charinfo['level'] < 4):
+        elif(1 < self.char_info['level'] < 4):
             self.nav_link_with("thrill")
         else:
             self.nav_link_with("suicide")
@@ -168,6 +168,9 @@ class Bot:
             print(self.char_info)
             # input("Press [ENTER] to continue ")
             
+            if(self.char_info['fights'] == 0):
+                return
+            
             if("healer.php" in self.current_link):
                 response_error = self.nav_link_with("pct=100")
                 if(response_error == -1):
@@ -176,13 +179,14 @@ class Bot:
                 print("Attempting to level up")
                 self.nav_link_with("village.php")
                 self.nav_link_with("train.php")
-                self.nav_link_with("master")
+                self.nav_link_with("challenge")
+                self.nav_link_with("full")
             elif("forest.php" in self.current_link):
                 if(self.char_info['health'] < 0.66 and self.option_exists("healer.php")):
                     print("Attempting to heal")
                     self.nav_link_with("healer.php")
                 else:
-                    if(self.option_exists("search.php")):
+                    if(self.option_exists("search")):
                         self.pick_fight()
                     else:
                         link = self.pick_op_priority()
@@ -202,6 +206,7 @@ class Bot:
                 link = self.pick_loc_priority()
                 self.pick_option(link)
         
+
     # CURRENTLY UNUSED
     def nav_and_fetch(self):
         response = session.post(domain + "login.php", data=payload, headers=self.user_agent)
