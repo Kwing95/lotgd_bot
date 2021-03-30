@@ -8,9 +8,28 @@ If (health < 50%) or (health < 100% and level == 1): Heal
 If level 1: Search
 If level 2: Thrillseeking
 If level > 2: Suicidal
+
+If level 1 and enemy level > 1 and "RIPOSTED" then flee
+"RIPOSTED" vs "RIPOSTE"
+
+Death flow:
+From death, "news"
+From news, "graveyard"
+From graveyard, "search" or "enter"
+From mausoleum, "restore" or ("question" AND "resurrection" AND "resurrection")
+If gold row = "Favor" you're dead
+
+Dragon flow:
+"village" -> "gypsy" -> "dragonplace"
+"dragon isn't hunting in Glukmoore"
+
+"From high above, you see the villagers of" -> Set location
+"Obviously the dragon isn't hunting in" -> Location is true or false
+
 '''
 
 import requests
+import re
 from bs4 import BeautifulSoup
 
 class Bot:
@@ -75,27 +94,35 @@ class Bot:
     def get_char_info(self):
         data = []
         
-        charinfo = dict()
+        charinfo = {
+            'level' : 1, 'health' : 0, 'fights' : 100, 'gold' : 100,
+            'experience' : False
+        }
         
-        charinfo['level'] = 1
-        charinfo['health'] = 0
-        charinfo['fights'] = 100
-        charinfo['gold'] = 100
-        charinfo['experience'] = False
-        
-        
-        try:
-            table = self.soup.find_all('table')[7] # All tables to right panel
-            table = table.find_all('table')[0] # Right panel to charinfo
-            table = table.find_all('tr') # Charinfo to charinfo rows
+        try:        
+            right_panel = self.soup.find_all('table')[7] # All tables to right panel
+            info_table = right_panel.find_all('table')[0] # Right panel to charinfo
+            info_rows = info_table.find_all('tr') # Charinfo to charinfo rows
             
-            charinfo['level'] = int(table[2].find_all('td')[1].text)
-            hp_arr = table[3].find_all('td')[1].text.split('/')
-            charinfo['health'] = round(100 * float(hp_arr[0]) / float(hp_arr[1])) / 100
-            charinfo['fights'] = int(table[5].find_all('td')[1].text)
-            charinfo['gold'] = int(table[11].find_all('td')[1].text)
-            charinfo['experience'] = "blue" in str(table[13].find_all('td')[1])
-            # charinfo['buffs'] = table[23].find('td').text
+            hp_arr = info_rows[3].find_all('td')[1].text.split('/')
+            text_dump = self.soup.get_text()
+            enemy_level_index = text_dump.index('Level: ') + 7
+            if(enemy_level_index > -1):
+                enemy_level = text_dump[enemy_level_index: enemy_level_index + 2]
+                enemy_level = int(re.compile("(\d+)").match(enemy_level).group(1))
+            else:
+                enemy_level = 0
+            
+            charinfo = {
+                'level' : int(info_rows[2].find_all('td')[1].text),
+                'health': round(100 * float(hp_arr[0]) / float(hp_arr[1])) / 100,
+                'fights' : int(info_rows[5].find_all('td')[1].text),
+                'gold' : int(info_rows[11].find_all('td')[1].text),
+                'experience' : "blue" in str(info_rows[13].find_all('td')[1]),
+                'enemy_level': enemy_level
+                # 'buffs': info_rows[23].find('td').text
+            }
+            
         except:
             print("Error when parsing table")
         
@@ -111,7 +138,7 @@ class Bot:
     def pick_fight(self):
         if(self.char_info['level'] == 1):
             self.nav_link_with("search")
-        elif(1 < self.char_info['level'] < 4):
+        elif(1 < self.char_info['level'] < 4 or self.char_info['level'] > 12):
             self.nav_link_with("thrill")
         else:
             self.nav_link_with("suicide")
@@ -155,6 +182,25 @@ class Bot:
         self.soup = BeautifulSoup(self.dump, features="html.parser")
         self.char_info = self.get_char_info()
         self.links = self.make_menu()
+        
+    # Given scrying information, determine where dragon could be
+    def set_dragon_location(self, location, found_dragon):
+        if(found_dragon):
+            dragon_location = { 'Glukmoore' : False, 'Romar' : False, 'Glorfindal' : False, 'Qexelcrag' : False }
+            dragon_location[location] = True
+        else:
+            dragon_location = { 'Glukmoore' : True, 'Romar' : True, 'Glorfindal' : True, 'Qexelcrag' : True }
+            dragon_location[location] = False
+            
+    # Return True if player can and should run from a fight
+    def player_should_run(self):
+        # Don't try to run if you can't
+        if(not self.option_exists('run')):
+            return False
+        if(self.char_info['level'] == 1 and self.char_info['enemy_level'] > 1):
+            return True
+        if(self.char_info['level'] == 2 and self.char_info['enemy_level'] > 3):
+            return True
     
     # Begin play session
     def play(self):
@@ -175,6 +221,7 @@ class Bot:
                 response_error = self.nav_link_with("pct=100")
                 if(response_error == -1):
                     response_error = self.nav_link_with("forest.php")
+            # elif(self.char_info['level'] == 15):
             elif(self.char_info['experience'] and self.option_exists("village.php")):
                 print("Attempting to level up")
                 self.nav_link_with("village.php")
@@ -189,8 +236,12 @@ class Bot:
                     if(self.option_exists("search")):
                         self.pick_fight()
                     else:
-                        link = self.pick_op_priority()
-                        self.pick_option(link)
+                        if(self.player_should_run()):
+                            print("Running from high level enemy")
+                            self.nav_link_with("run")
+                        else:
+                            link = self.pick_op_priority()
+                            self.pick_option(link)
                 '''
                 if("Health" in chardata.keys() and chardata["Health"] < 0.5):
                     response = self.nav_link_with(links, "healer.php")
